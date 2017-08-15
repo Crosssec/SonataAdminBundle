@@ -66,7 +66,6 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface
         )\\\(.*)@x';
 
     const MOSAIC_ICON_CLASS = 'fa fa-th-large fa-fw';
-
     /**
      * The list FieldDescription constructed from the configureListField method.
      *
@@ -538,6 +537,12 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface
      */
     private $breadcrumbsBuilder;
 
+    protected $listMapperClass = ListMapper::class;
+
+    protected $formMapperClass = FormMapper::class;
+
+    protected $datagridMapperClass = DatagridMapper::class;
+
     /**
      * @param string $code
      * @param string $class
@@ -832,7 +837,7 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface
 
         $this->datagrid->getPager()->setMaxPageLinks($this->maxPageLinks);
 
-        $mapper = new DatagridMapper($this->getDatagridBuilder(), $this->datagrid, $this);
+        $mapper = new $this->datagridMapperClass($this->getDatagridBuilder(), $this->datagrid, $this);
 
         // build the datagrid filter
         $this->configureDatagridFilters($mapper);
@@ -1287,7 +1292,7 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface
      */
     public function defineFormBuilder(FormBuilderInterface $formBuilder)
     {
-        $mapper = new FormMapper($this->getFormContractor(), $formBuilder, $this);
+        $mapper = new $this->formMapperClass($this->getFormContractor(), $formBuilder, $this);
 
         $this->configureFormFields($mapper);
 
@@ -3159,7 +3164,7 @@ EOT;
 
         $this->list = $this->getListBuilder()->getBaseList();
 
-        $mapper = new ListMapper($this->getListBuilder(), $this->list, $this);
+        $mapper = new $this->listMapperClass($this->getListBuilder(), $this->list, $this);
 
         if (count($this->getBatchActions()) > 0) {
             $fieldDescription = $this->getModelManager()->getNewFieldDescriptionInstance(
