@@ -543,6 +543,8 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface
 
     protected $datagridMapperClass = DatagridMapper::class;
 
+    protected $showMapperClass = ShowMapper::class;
+
     /**
      * @param string $code
      * @param string $class
@@ -3144,7 +3146,7 @@ EOT;
         }
 
         $this->show = new FieldDescriptionCollection();
-        $mapper = new ShowMapper($this->showBuilder, $this->show, $this);
+        $mapper = new $this->showMapperClass($this->showBuilder, $this->show, $this);
 
         $this->configureShowFields($mapper);
 
