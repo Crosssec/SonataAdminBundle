@@ -34,6 +34,7 @@ use Sonata\AdminBundle\Route\RouteGeneratorInterface;
 use Sonata\AdminBundle\Security\Handler\AclSecurityHandlerInterface;
 use Sonata\AdminBundle\Security\Handler\SecurityHandlerInterface;
 use Sonata\AdminBundle\Show\ShowMapper;
+use Sonata\AdminBundle\Templating\MutableTemplateRegistryInterface;
 use Sonata\AdminBundle\Translator\LabelTranslatorStrategyInterface;
 use Sonata\CoreBundle\Model\Metadata;
 use Sonata\CoreBundle\Validator\Constraints\InlineConstraint;
@@ -403,6 +404,8 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
 
     /**
      * @var array
+     *
+     * @deprecated since 3.x, will be dropped in 4.0. Use TemplateRegistry services instead
      */
     protected $templates = [];
 
@@ -456,6 +459,11 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
      * @var array [action1 => requiredRole1, action2 => [requiredRole2, requiredRole3]]
      */
     protected $accessMapping = [];
+
+    /**
+     * @var MutableTemplateRegistryInterface
+     */
+    private $templateRegistry;
 
     /**
      * The class name managed by the admin class.
@@ -1151,9 +1159,17 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
         return $this->routeGenerator->generateMenuUrl($this, $name, $parameters, $absolute);
     }
 
+    final public function setTemplateRegistry(MutableTemplateRegistryInterface $templateRegistry)
+    {
+        $this->templateRegistry = $templateRegistry;
+    }
+
     public function setTemplates(array $templates)
     {
+        // NEXT_MAJOR: Remove this line
         $this->templates = $templates;
+
+        $this->getTemplateRegistry()->setTemplates($templates);
     }
 
     /**
@@ -1162,22 +1178,32 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
      */
     public function setTemplate($name, $template)
     {
+        // NEXT_MAJOR: Remove this line
         $this->templates[$name] = $template;
+
+        $this->getTemplateRegistry()->setTemplate($name, $template);
     }
 
     /**
+     * @deprecated since 3.x, will be dropped in 4.0. Use TemplateRegistry services instead
+     *
      * @return array
      */
     public function getTemplates()
     {
-        return $this->templates;
+        return $this->getTemplateRegistry()->getTemplates();
     }
 
+    /**
+     * @deprecated since 3.x, will be dropped in 4.0. Use TemplateRegistry services instead
+     *
+     * @param string $name
+     *
+     * @return null|string
+     */
     public function getTemplate($name)
     {
-        if (isset($this->templates[$name])) {
-            return $this->templates[$name];
-        }
+        return $this->getTemplateRegistry()->getTemplate($name);
     }
 
     public function getNewInstance()
@@ -2537,7 +2563,7 @@ EOT;
             && $this->hasRoute('create')
         ) {
             $list['create'] = [
-                'template' => $this->getTemplate('button_create'),
+                'template' => $this->getTemplateRegistry()->getTemplate('button_create'),
             ];
         }
 
@@ -2546,7 +2572,7 @@ EOT;
             && $this->hasRoute('edit')
         ) {
             $list['edit'] = [
-                'template' => $this->getTemplate('button_edit'),
+                'template' => $this->getTemplateRegistry()->getTemplate('button_edit'),
             ];
         }
 
@@ -2555,7 +2581,7 @@ EOT;
             && $this->hasRoute('history')
         ) {
             $list['history'] = [
-                'template' => $this->getTemplate('button_history'),
+                'template' => $this->getTemplateRegistry()->getTemplate('button_history'),
             ];
         }
 
@@ -2565,7 +2591,7 @@ EOT;
             && $this->hasRoute('acl')
         ) {
             $list['acl'] = [
-                'template' => $this->getTemplate('button_acl'),
+                'template' => $this->getTemplateRegistry()->getTemplate('button_acl'),
             ];
         }
 
@@ -2575,7 +2601,7 @@ EOT;
             && $this->hasRoute('show')
         ) {
             $list['show'] = [
-                'template' => $this->getTemplate('button_show'),
+                'template' => $this->getTemplateRegistry()->getTemplate('button_show'),
             ];
         }
 
@@ -2584,7 +2610,7 @@ EOT;
             && $this->hasRoute('list')
         ) {
             $list['list'] = [
-                'template' => $this->getTemplate('button_list'),
+                'template' => $this->getTemplateRegistry()->getTemplate('button_list'),
             ];
         }
 
@@ -2624,7 +2650,7 @@ EOT;
             $actions['create'] = [
                 'label' => 'link_add',
                 'translation_domain' => 'SonataAdminBundle',
-                'template' => $this->getTemplate('action_create'),
+                'template' => $this->getTemplateRegistry()->getTemplate('action_create'),
                 'url' => $this->generateUrl('create'),
                 'icon' => 'plus-circle',
             ];
@@ -2699,6 +2725,14 @@ EOT;
     public function canAccessObject($action, $object)
     {
         return $object && $this->id($object) && $this->hasAccess($action, $object);
+    }
+
+    /**
+     * @return MutableTemplateRegistryInterface
+     */
+    final protected function getTemplateRegistry()
+    {
+        return $this->templateRegistry;
     }
 
     /**
@@ -2824,7 +2858,7 @@ EOT;
             );
 
             $fieldDescription->setAdmin($this);
-            $fieldDescription->setTemplate($this->getTemplate('batch'));
+            $fieldDescription->setTemplate($this->getTemplateRegistry()->getTemplate('batch'));
 
             $mapper->add($fieldDescription, 'batch');
         }
@@ -2848,7 +2882,7 @@ EOT;
             );
 
             $fieldDescription->setAdmin($this);
-            $fieldDescription->setTemplate($this->getTemplate('select'));
+            $fieldDescription->setTemplate($this->getTemplateRegistry()->getTemplate('select'));
 
             $mapper->add($fieldDescription, 'select');
         }
