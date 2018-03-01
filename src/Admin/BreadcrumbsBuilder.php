@@ -19,7 +19,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
  *
  * @author Grégoire Paris <postmaster@greg0ire.fr>
  */
-final class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
+class BreadcrumbsBuilder implements BreadcrumbsBuilderInterface
 {
     /**
      * @var string[]
