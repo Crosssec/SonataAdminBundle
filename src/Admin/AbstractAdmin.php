@@ -25,6 +25,7 @@ use Sonata\AdminBundle\Datagrid\DatagridMapper;
 use Sonata\AdminBundle\Datagrid\ListMapper;
 use Sonata\AdminBundle\Datagrid\Pager;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
+use Sonata\AdminBundle\Filter\Persister\FilterPersisterInterface;
 use Sonata\AdminBundle\Form\FormMapper;
 use Sonata\AdminBundle\Form\Type\ModelHiddenType;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
@@ -194,7 +195,11 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
     /**
      * Whether or not to persist the filters in the session.
      *
+     * NEXT_MAJOR: remove this property
+     *
      * @var bool
+     *
+     * @deprecated since 3.x, to be removed in 4.0.
      */
     protected $persistFilters = false;
 
@@ -553,6 +558,13 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
     protected $showMapperClass = ShowMapper::class;
 
     /**
+     * Component responsible for persisting filters.
+     *
+     * @var FilterPersisterInterface|null
+     */
+    private $filterPersister;
+
+    /**
      * @param string $code
      * @param string $class
      * @param string $baseControllerName
@@ -741,12 +753,20 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
         if ($this->hasRequest()) {
             $filters = $this->request->query->get('filter', []);
 
-            // if persisting filters, save filters to session, or pull them out of session if no new filters set
-            if ($this->persistFilters) {
-                if ($filters == [] && 'reset' != $this->request->query->get('filters')) {
-                    $filters = $this->request->getSession()->get($this->getCode().'.filter.parameters', []);
+            // if filter persistence is configured
+            // NEXT_MAJOR: remove `$this->persistFilters !== false` from the condition
+            if (false !== $this->persistFilters && null !== $this->filterPersister) {
+                // if reset filters is asked, remove from storage
+                if ('reset' === $this->request->query->get('filters')) {
+                    $this->filterPersister->reset($this->getCode());
+                }
+
+                // if no filters, fetch from storage
+                // otherwise save to storage
+                if (empty($filters)) {
+                    $filters = $this->filterPersister->get($this->getCode());
                 } else {
-                    $this->request->getSession()->set($this->getCode().'.filter.parameters', $filters);
+                    $this->filterPersister->set($this->getCode(), $filters);
                 }
             }
 
@@ -1370,10 +1390,27 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
 
     /**
      * @param bool $persist
+     *
+     * NEXT_MAJOR: remove this method
+     *
+     * @deprecated since 3.x, to be removed in 4.0.
      */
     public function setPersistFilters($persist)
     {
+        @trigger_error(
+            'The '.__METHOD__.' method is deprecated since version 3.x and will be removed in 4.0.',
+            E_USER_DEPRECATED
+        );
+
         $this->persistFilters = $persist;
+    }
+
+    /**
+     * @param FilterPersisterInterface|null $filterPersister
+     */
+    public function setFilterPersister(FilterPersisterInterface $filterPersister = null)
+    {
+        $this->filterPersister = $filterPersister;
     }
 
     /**
