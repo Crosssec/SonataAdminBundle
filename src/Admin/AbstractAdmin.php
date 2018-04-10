@@ -2563,7 +2563,9 @@ EOT;
             && $this->hasRoute('create')
         ) {
             $list['create'] = [
-                'template' => $this->getTemplateRegistry()->getTemplate('button_create'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('button_create'),
+//                'template' => $this->getTemplateRegistry()->getTemplate('button_create'),
             ];
         }
 
@@ -2572,7 +2574,9 @@ EOT;
             && $this->hasRoute('edit')
         ) {
             $list['edit'] = [
-                'template' => $this->getTemplateRegistry()->getTemplate('button_edit'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('button_edit'),
+                //'template' => $this->getTemplateRegistry()->getTemplate('button_edit'),
             ];
         }
 
@@ -2581,7 +2585,9 @@ EOT;
             && $this->hasRoute('history')
         ) {
             $list['history'] = [
-                'template' => $this->getTemplateRegistry()->getTemplate('button_history'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('button_history'),
+                // 'template' => $this->getTemplateRegistry()->getTemplate('button_history'),
             ];
         }
 
@@ -2591,7 +2597,9 @@ EOT;
             && $this->hasRoute('acl')
         ) {
             $list['acl'] = [
-                'template' => $this->getTemplateRegistry()->getTemplate('button_acl'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('button_acl'),
+                // 'template' => $this->getTemplateRegistry()->getTemplate('button_acl'),
             ];
         }
 
@@ -2601,7 +2609,9 @@ EOT;
             && $this->hasRoute('show')
         ) {
             $list['show'] = [
-                'template' => $this->getTemplateRegistry()->getTemplate('button_show'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('button_show'),
+                // 'template' => $this->getTemplateRegistry()->getTemplate('button_show'),
             ];
         }
 
@@ -2610,7 +2620,9 @@ EOT;
             && $this->hasRoute('list')
         ) {
             $list['list'] = [
-                'template' => $this->getTemplateRegistry()->getTemplate('button_list'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('button_list'),
+                // 'template' => $this->getTemplateRegistry()->getTemplate('button_list'),
             ];
         }
 
@@ -2650,7 +2662,9 @@ EOT;
             $actions['create'] = [
                 'label' => 'link_add',
                 'translation_domain' => 'SonataAdminBundle',
-                'template' => $this->getTemplateRegistry()->getTemplate('action_create'),
+                // NEXT_MAJOR: Remove this line and use commented line below it instead
+                'template' => $this->getTemplate('action_create'),
+                // 'template' => $this->getTemplateRegistry()->getTemplate('action_create'),
                 'url' => $this->generateUrl('create'),
                 'icon' => 'plus-circle',
             ];
@@ -2858,7 +2872,9 @@ EOT;
             );
 
             $fieldDescription->setAdmin($this);
-            $fieldDescription->setTemplate($this->getTemplateRegistry()->getTemplate('batch'));
+            // NEXT_MAJOR: Remove this line and use commented line below it instead
+            $fieldDescription->setTemplate($this->getTemplate('batch'));
+            // $fieldDescription->setTemplate($this->getTemplateRegistry()->getTemplate('batch'));
 
             $mapper->add($fieldDescription, 'batch');
         }
@@ -2882,7 +2898,9 @@ EOT;
             );
 
             $fieldDescription->setAdmin($this);
-            $fieldDescription->setTemplate($this->getTemplateRegistry()->getTemplate('select'));
+            // NEXT_MAJOR: Remove this line and use commented line below it instead
+            $fieldDescription->setTemplate($this->getTemplate('select'));
+            // $fieldDescription->setTemplate($this->getTemplateRegistry()->getTemplate('select'));
 
             $mapper->add($fieldDescription, 'select');
         }
