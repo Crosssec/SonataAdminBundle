@@ -1437,6 +1437,8 @@ abstract class AbstractAdmin implements AdminInterface, DomainObjectInterface, A
     public function setFilterPersister(FilterPersisterInterface $filterPersister = null)
     {
         $this->filterPersister = $filterPersister;
+        // NEXT_MAJOR remove the deprecated property will be removed. Needed for persisted filter condition.
+        $this->persistFilters = true;
     }
 
     /**
