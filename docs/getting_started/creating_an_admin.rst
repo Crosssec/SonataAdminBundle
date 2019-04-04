@@ -5,26 +5,11 @@ You've been able to get the admin interface working in :doc:`the previous
 chapter <installation>`. In this tutorial, you'll learn how to tell SonataAdmin
 how an admin can manage your models.
 
-.. note::
-    This article assumes you are using Symfony 4. Using Symfony 2.8 or 3
-    will require to slightly modify some namespaces and paths when creating
-    entities and admins.
-
 Step 0: Create a Model
 ----------------------
 
 For the rest of the tutorial, you'll need some sort of model. In this tutorial,
-two very simple ``Post`` and ``Tag`` entities will be used. Generate them by
-using these commands:
-
-.. code-block:: bash
-
-    $ php bin/console doctrine:generate:entity --entity="App:Category" --fields="name:string(255)" --no-interaction
-    $ php bin/console doctrine:generate:entity --entity="App:BlogPost" --fields="title:string(255) body:text draft:boolean" --no-interaction
-
-After this, you'll need to tweak the entities a bit:
-
-.. code-block:: php
+``BlogPost`` and ``Category`` will be used::
 
     // src/Entity/BlogPost.php
 
@@ -34,33 +19,18 @@ After this, you'll need to tweak the entities a bit:
         // ...
 
         /**
-         * @ORM\ManyToOne(targetEntity="Category", inversedBy="blogPosts")
+         * @var string
+         *
+         * @ORM\Column(name="title", type="string")
          */
-        private $category;
+        private $title;
 
-        public function setCategory(Category $category)
-        {
-            $this->category = $category;
-        }
-
-        public function getCategory()
-        {
-            return $this->category;
-        }
-
-        // ...
-    }
-
-Set the default value to ``false``.
-
-.. code-block:: php
-
-    // src/Entity/BlogPost.php
-
-    // ...
-    class BlogPost
-    {
-        // ...
+        /**
+         * @var string
+         *
+         * @ORM\Column(name="body", type="text")
+         */
+        private $body;
 
         /**
          * @var bool
@@ -69,24 +39,32 @@ Set the default value to ``false``.
          */
         private $draft = false;
 
-        // ...
+        /**
+         * @ORM\ManyToOne(targetEntity="Category", inversedBy="blogPosts")
+         */
+        private $category;
     }
 
 .. code-block:: php
 
     // src/Entity/Category.php
 
-    // ...
     use Doctrine\Common\Collections\ArrayCollection;
-    // ...
 
     class Category
     {
         // ...
 
         /**
-        * @ORM\OneToMany(targetEntity="BlogPost", mappedBy="category")
-        */
+         * @var string
+         *
+         * @ORM\Column(name="name", type="string")
+         */
+        private $name;
+
+        /**
+         * @ORM\OneToMany(targetEntity="BlogPost", mappedBy="category")
+         */
         private $blogPosts;
 
         public function __construct()
@@ -98,17 +76,16 @@ Set the default value to ``false``.
         {
             return $this->blogPosts;
         }
-
-        // ...
     }
 
 After this, create the schema for these entities:
 
 .. code-block:: bash
 
-    $ php bin/console doctrine:schema:create
+    bin/console doctrine:schema:create
 
 .. note::
+
     This article assumes you have basic knowledge of the Doctrine2 ORM and
     you've set up a database correctly.
 
@@ -125,11 +102,10 @@ to find entries and how the create form will look like. Each model will have
 its own Admin class.
 
 Knowing this, let's create an Admin class for the ``Category`` entity. The
-easiest way to do this is by extending ``Sonata\AdminBundle\Admin\AbstractAdmin``.
-
-.. code-block:: php
+easiest way to do this is by extending ``Sonata\AdminBundle\Admin\AbstractAdmin``::
 
     // src/Admin/CategoryAdmin.php
+
     namespace App\Admin;
 
     use Sonata\AdminBundle\Admin\AbstractAdmin;
@@ -138,7 +114,7 @@ easiest way to do this is by extending ``Sonata\AdminBundle\Admin\AbstractAdmin`
     use Sonata\AdminBundle\Form\FormMapper;
     use Symfony\Component\Form\Extension\Core\Type\TextType;
 
-    class CategoryAdmin extends AbstractAdmin
+    final class CategoryAdmin extends AbstractAdmin
     {
         protected function configureFormFields(FormMapper $formMapper)
         {
@@ -191,7 +167,6 @@ service and tag it with the ``sonata.admin`` tag:
                 arguments: [~, App\Entity\Category, ~]
                 tags:
                     - { name: sonata.admin, manager_type: orm, label: Category }
-                public: true
 
 The constructor of the base Admin class has many arguments. SonataAdminBundle
 provides a compiler pass which takes care of configuring it correctly for you.
@@ -208,7 +183,7 @@ routes, you have to make sure the routing loader of the SonataAdminBundle is exe
 
     .. code-block:: yaml
 
-        # config/routing.yaml
+        # config/routes/sonata_admin.yaml
 
         # ...
         _sonata_admin:
@@ -233,6 +208,7 @@ Project". In the next chapters, you'll create an admin for the ``BlogPost``
 entity and learn more about this class.
 
 .. note::
+
     If you're not seeing the nice labels, but instead something like
     "link_add", you should make sure that you've `enabled the translator`_.
 

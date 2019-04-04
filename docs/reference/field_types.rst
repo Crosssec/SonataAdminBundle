@@ -43,21 +43,19 @@ This is currently limited to scalar types (text, integer, url...) and choice typ
     ``date`` filter specification, available at: `http://twig.sensiolabs.org/doc/filters/date.html <http://twig.sensiolabs.org/doc/filters/date.html>`_
     and php timezone list: `https://php.net/manual/en/timezones.php <https://php.net/manual/en/timezones.php>`_
     You can use in lists what `view-timezone <http://symfony.com/doc/current/reference/forms/types/datetime.html#view-timezone>`_ allows on forms,
-    a way to render the date in the user timezone.
+    a way to render the date in the user timezone::
 
-.. code-block:: php
+        protected function configureListFields(ListMapper $listMapper)
+        {
+            $listMapper
 
-    public function configureListFields(ListMapper $listMapper)
-    {
-        $listMapper
-
-            // store date in UTC but display is in the user timezone
-            ->add('date', null, [
-                'format' => 'Y-m-d H:i',
-                'timezone' => 'America/New_York'
-            ])
-        ;
-    }
+                // store date in UTC but display is in the user timezone
+                ->add('date', null, [
+                    'format' => 'Y-m-d H:i',
+                    'timezone' => 'America/New_York',
+                ])
+            ;
+        }
 
 More types might be provided based on the persistency layer defined. Please refer to their
 related documentations.
@@ -65,19 +63,30 @@ related documentations.
 Choice
 ^^^^^^
 
+You can use the following parameters:
+
+======================================  ============================================================
+Parameter                               Description
+======================================  ============================================================
+**choices**                             Array of choices
+**required**                            Whether the field is required or not (default true) when the
+                                        ``editable`` option is set to ``true``. If false, an empty
+                                        placeholder will be added.
+======================================  ============================================================
+
 .. code-block:: php
 
-    public function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $listMapper)
     {
-        // For the value `prog`, the displayed text is `In progress`. The `AppBundle` catalogue will be used to translate `In progress` message.
+        // For the value `prog`, the displayed text is `In progress`. The `App` catalogue will be used to translate `In progress` message.
         $listMapper
             ->add('status', 'choice', [
                 'choices' => [
                     'prep' => 'Prepared',
                     'prog' => 'In progress',
-                    'done' => 'Done'
+                    'done' => 'Done',
                 ],
-                'catalogue' => 'AppBundle'
+                'catalogue' => 'App',
             ])
         ;
     }
@@ -86,7 +95,7 @@ The ``choice`` field type also supports multiple values that can be separated by
 
 .. code-block:: php
 
-    public function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $listMapper)
     {
         // For the value `['r', 'b']`, the displayed text ist `red | blue`.
         $listMapper
@@ -96,7 +105,7 @@ The ``choice`` field type also supports multiple values that can be separated by
                 'choices' => [
                     'r' => 'red',
                     'g' => 'green',
-                    'b' => 'blue'
+                    'b' => 'blue',
                 ]
             ])
         ;
@@ -127,7 +136,7 @@ Parameter                               Description
 
 .. code-block:: php
 
-    public function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $listMapper)
     {
         $listMapper
             // Output for value `http://example.com`:
@@ -197,7 +206,7 @@ Parameter                   Description
 
 .. code-block:: php
 
-    public function configureListFields(ListMapper $listMapper)
+    protected function configureListFields(ListMapper $listMapper)
     {
         $listMapper
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -141,14 +143,15 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         $loader->load('block.xml');
         $loader->load('menu.xml');
         $loader->load('commands.xml');
+        $loader->load('actions.xml');
+
+        if (isset($bundles['MakerBundle'])) {
+            $loader->load('makers.xml');
+        }
 
         if (isset($bundles['SonataExporterBundle'])) {
             $loader->load('exporter.xml');
         }
-
-        $container->getDefinition('sonata.admin.exporter')->setDeprecated(
-            'The service "%service_id%" is deprecated in favor of the "sonata.exporter.exporter" service'
-        );
 
         $configuration = $this->getConfiguration($configs, $container);
         $config = $this->processConfiguration($configuration, $configs);
@@ -157,6 +160,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         $config['options']['stylesheets'] = $this->buildStylesheets($config);
         $config['options']['role_admin'] = $config['security']['role_admin'];
         $config['options']['role_super_admin'] = $config['security']['role_super_admin'];
+        $config['options']['search'] = $config['search'];
 
         $pool = $container->getDefinition('sonata.admin.pool');
         $pool->replaceArgument(1, $config['title']);
@@ -168,6 +172,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         }
 
         $container->setParameter('sonata.admin.configuration.global_search.empty_boxes', $config['global_search']['empty_boxes']);
+        $container->setParameter('sonata.admin.configuration.global_search.case_sensitive', $config['global_search']['case_sensitive']);
         $container->setParameter('sonata.admin.configuration.templates', $config['templates'] + [
             'user_block' => '@SonataAdmin/Core/user_block.html.twig',
             'add_block' => '@SonataAdmin/Core/add_block.html.twig',
@@ -204,6 +209,13 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         $container->setParameter('sonata.admin.configuration.dashboard_groups', $config['dashboard']['groups']);
         $container->setParameter('sonata.admin.configuration.dashboard_blocks', $config['dashboard']['blocks']);
         $container->setParameter('sonata.admin.configuration.sort_admins', $config['options']['sort_admins']);
+        $container->setParameter(
+            'sonata.admin.configuration.mosaic_background',
+            $config['options']['mosaic_background']
+        );
+        $container->setParameter('sonata.admin.configuration.default_group', $config['options']['default_group']);
+        $container->setParameter('sonata.admin.configuration.default_label_catalogue', $config['options']['default_label_catalogue']);
+        $container->setParameter('sonata.admin.configuration.default_icon', $config['options']['default_icon']);
         $container->setParameter('sonata.admin.configuration.breadcrumbs', $config['breadcrumbs']);
 
         if (null === $config['security']['acl_user_manager'] && isset($bundles['FOSUserBundle'])) {
@@ -216,7 +228,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
 
         switch ($config['security']['handler']) {
             case 'sonata.admin.security.handler.role':
-                if (0 === count($config['security']['information'])) {
+                if (0 === \count($config['security']['information'])) {
                     $config['security']['information'] = [
                         'EDIT' => ['EDIT'],
                         'LIST' => ['LIST'],
@@ -230,7 +242,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
 
                 break;
             case 'sonata.admin.security.handler.acl':
-                if (0 === count($config['security']['information'])) {
+                if (0 === \count($config['security']['information'])) {
                     $config['security']['information'] = [
                         'GUEST' => ['VIEW', 'LIST'],
                         'STAFF' => ['EDIT', 'LIST', 'CREATE'],
@@ -290,6 +302,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
 
         // set filter persistence
         $container->setParameter('sonata.admin.configuration.filters.persist', $config['persist_filters']);
+        $container->setParameter('sonata.admin.configuration.filters.persister', $config['filter_persister']);
 
         $container->setParameter('sonata.admin.configuration.show.mosaic.button', $config['show_mosaic_button']);
 
@@ -328,7 +341,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         foreach ($diExtraConfigs as $diExtraConfig) {
             if (isset($diExtraConfig['annotation_patterns'])) {
                 // don't add our own pattern if user has already done so
-                if (false !== array_search($sonataAdminPattern, $diExtraConfig['annotation_patterns'])) {
+                if (false !== array_search($sonataAdminPattern, $diExtraConfig['annotation_patterns'], true)) {
                     return;
                 }
                 $annotationPatternsConfigured = true;
@@ -451,7 +464,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         return 'https://sonata-project.org/schema/dic/admin';
     }
 
-    private function buildStylesheets($config)
+    private function buildStylesheets($config): array
     {
         return $this->mergeArray(
             $config['assets']['stylesheets'],
@@ -460,7 +473,7 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         );
     }
 
-    private function buildJavascripts($config)
+    private function buildJavascripts($config): array
     {
         return $this->mergeArray(
             $config['assets']['javascripts'],
@@ -469,21 +482,21 @@ class SonataAdminExtension extends Extension implements PrependExtensionInterfac
         );
     }
 
-    private function mergeArray($array, $addArray, $removeArray = [])
+    private function mergeArray(array $array, array $addArray, array $removeArray = []): array
     {
         foreach ($addArray as $toAdd) {
             array_push($array, $toAdd);
         }
         foreach ($removeArray as $toRemove) {
-            if (in_array($toRemove, $array)) {
-                array_splice($array, array_search($toRemove, $array), 1);
+            if (\in_array($toRemove, $array, true)) {
+                array_splice($array, array_search($toRemove, $array, true), 1);
             }
         }
 
         return $array;
     }
 
-    private function replacePropertyAccessor(ContainerBuilder $container)
+    private function replacePropertyAccessor(ContainerBuilder $container): void
     {
         if (!$container->has('form.property_accessor')) {
             return;

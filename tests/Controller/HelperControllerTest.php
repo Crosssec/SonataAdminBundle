@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -11,11 +13,9 @@
 
 namespace Sonata\AdminBundle\Tests\Controller;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
-use Doctrine\Common\Persistence\ObjectManager;
 use PHPUnit\Framework\TestCase;
 use Prophecy\Argument;
+use Prophecy\Prophecy\ObjectProphecy;
 use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Admin\AdminHelper;
 use Sonata\AdminBundle\Admin\FieldDescriptionInterface;
@@ -24,9 +24,11 @@ use Sonata\AdminBundle\Controller\HelperController;
 use Sonata\AdminBundle\Datagrid\DatagridInterface;
 use Sonata\AdminBundle\Datagrid\Pager;
 use Sonata\AdminBundle\Model\ModelManagerInterface;
+use Sonata\AdminBundle\Object\MetadataInterface;
+use Sonata\AdminBundle\Templating\TemplateRegistryInterface;
 use Sonata\AdminBundle\Tests\Fixtures\Bundle\Entity\Foo;
+use Sonata\AdminBundle\Tests\Fixtures\Filter\FooFilter;
 use Sonata\AdminBundle\Twig\Extension\SonataAdminExtension;
-use Sonata\CoreBundle\Model\Metadata;
 use Symfony\Bridge\Twig\AppVariable;
 use Symfony\Bridge\Twig\Command\DebugCommand;
 use Symfony\Bridge\Twig\Extension\FormExtension;
@@ -48,53 +50,47 @@ use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Twig\Environment;
 use Twig\Template;
+use Twig\TemplateWrapper;
 
-class AdminControllerHelper_Foo
-{
-    private $bar;
-
-    public function getAdminTitle()
-    {
-        return 'foo';
-    }
-
-    public function setEnabled($value)
-    {
-    }
-
-    public function setBar(AdminControllerHelper_Bar $bar)
-    {
-        $this->bar = $bar;
-    }
-
-    public function getBar()
-    {
-        return $this->bar;
-    }
-}
-
-class AdminControllerHelper_Bar
-{
-    public function getAdminTitle()
-    {
-        return 'bar';
-    }
-
-    public function setEnabled($value)
-    {
-    }
-
-    public function getEnabled()
-    {
-    }
-}
-
+/**
+ * @group legacy
+ */
 class HelperControllerTest extends TestCase
 {
     /**
+     * @var Pool
+     */
+    private $pool;
+
+    /**
+     * @var Environment
+     */
+    private $twig;
+
+    /**
+     * @var AdminHelper
+     */
+    private $helper;
+
+    /**
+     * @var ValidatorInterface
+     */
+    private $validator;
+
+    /**
+     * @var AbstractAdmin
+     */
+    private $admin;
+
+    /**
+     * @var HelperController
+     */
+    private $controller;
+
+    /**
      * {@inheritdoc}
      */
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->pool = $this->prophesize(Pool::class);
         $this->twig = $this->prophesize(Environment::class);
@@ -113,7 +109,7 @@ class HelperControllerTest extends TestCase
         );
     }
 
-    public function testGetShortObjectDescriptionActionInvalidAdmin()
+    public function testGetShortObjectDescriptionActionInvalidAdmin(): void
     {
         $this->expectException(NotFoundHttpException::class);
 
@@ -129,7 +125,7 @@ class HelperControllerTest extends TestCase
         $this->controller->getShortObjectDescriptionAction($request);
     }
 
-    public function testGetShortObjectDescriptionActionObjectDoesNotExist()
+    public function testGetShortObjectDescriptionActionObjectDoesNotExist(): void
     {
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Invalid format');
@@ -146,7 +142,7 @@ class HelperControllerTest extends TestCase
         $this->controller->getShortObjectDescriptionAction($request);
     }
 
-    public function testGetShortObjectDescriptionActionEmptyObjectId()
+    public function testGetShortObjectDescriptionActionEmptyObjectId(): void
     {
         $request = new Request([
             'code' => 'sonata.post.admin',
@@ -163,7 +159,7 @@ class HelperControllerTest extends TestCase
         $this->assertInstanceOf(Response::class, $response);
     }
 
-    public function testGetShortObjectDescriptionActionObject()
+    public function testGetShortObjectDescriptionActionObject(): void
     {
         $request = new Request([
             'code' => 'sonata.post.admin',
@@ -189,7 +185,7 @@ class HelperControllerTest extends TestCase
         $this->assertSame('renderedTemplate', $response->getContent());
     }
 
-    public function testSetObjectFieldValueAction()
+    public function testSetObjectFieldValueAction(): void
     {
         $object = new AdminControllerHelper_Foo();
         $request = new Request([
@@ -203,19 +199,26 @@ class HelperControllerTest extends TestCase
         $fieldDescription = $this->prophesize(FieldDescriptionInterface::class);
         $pool = $this->prophesize(Pool::class);
         $template = $this->prophesize(Template::class);
+        $template->render(Argument::cetera())->willReturn('some value');
         $translator = $this->prophesize(TranslatorInterface::class);
         $propertyAccessor = new PropertyAccessor();
+        $templateRegistry = $this->prophesize(TemplateRegistryInterface::class);
+        $container = $this->prophesize(ContainerInterface::class);
 
         $this->admin->getObject(42)->willReturn($object);
+        $this->admin->getCode()->willReturn('sonata.post.admin');
         $this->admin->hasAccess('edit', $object)->willReturn(true);
         $this->admin->getListFieldDescription('enabled')->willReturn($fieldDescription->reveal());
         $this->admin->update($object)->shouldBeCalled();
+        // NEXT_MAJOR: Remove this line
         $this->admin->getTemplate('base_list_field')->willReturn('admin_template');
+        $templateRegistry->getTemplate('base_list_field')->willReturn('admin_template');
+        $container->get('sonata.post.admin.template_registry')->willReturn($templateRegistry->reveal());
         $this->pool->getPropertyAccessor()->willReturn($propertyAccessor);
         $this->twig->getExtension(SonataAdminExtension::class)->willReturn(
-            new SonataAdminExtension($pool->reveal(), null, $translator->reveal())
+            new SonataAdminExtension($pool->reveal(), null, $translator->reveal(), $container->reveal())
         );
-        $this->twig->loadTemplate('admin_template')->willReturn($template->reveal());
+        $this->twig->load('admin_template')->willReturn(new TemplateWrapper($this->twig->reveal(), $template->reveal()));
         $this->twig->isDebug()->willReturn(false);
         $fieldDescription->getOption('editable')->willReturn(true);
         $fieldDescription->getAdmin()->willReturn($this->admin->reveal());
@@ -226,10 +229,10 @@ class HelperControllerTest extends TestCase
 
         $response = $this->controller->setObjectFieldValueAction($request);
 
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertSame(200, $response->getStatusCode());
     }
 
-    public function testSetObjectFieldValueActionOnARelationField()
+    public function testSetObjectFieldValueActionOnARelationField(): void
     {
         $object = new AdminControllerHelper_Foo();
         $associationObject = new AdminControllerHelper_Bar();
@@ -241,49 +244,48 @@ class HelperControllerTest extends TestCase
             'context' => 'list',
         ], [], [], [], [], ['REQUEST_METHOD' => 'POST', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
 
-        $container = $this->prophesize(ContainerInterface::class);
         $fieldDescription = $this->prophesize(FieldDescriptionInterface::class);
-        $managerRegistry = $this->prophesize(ManagerRegistry::class);
-        $objectManager = $this->prophesize(ObjectManager::class);
-        $classMetadata = $this->prophesize(ClassMetadata::class);
-        $pool = $this->prophesize(Pool::class);
+        $modelManager = $this->prophesize(ModelManagerInterface::class);
         $template = $this->prophesize(Template::class);
+        $template->render(Argument::cetera())->willReturn('some value');
         $translator = $this->prophesize(TranslatorInterface::class);
         $propertyAccessor = new PropertyAccessor();
+        $templateRegistry = $this->prophesize(TemplateRegistryInterface::class);
+        $container = $this->prophesize(ContainerInterface::class);
 
         $this->admin->getObject(42)->willReturn($object);
+        $this->admin->getCode()->willReturn('sonata.post.admin');
         $this->admin->hasAccess('edit', $object)->willReturn(true);
         $this->admin->getListFieldDescription('bar')->willReturn($fieldDescription->reveal());
-        $this->admin->getManagerType()->willReturn('doctrine_orm');
-        $this->admin->getClass()->willReturn(get_class($object));
+        $this->admin->getClass()->willReturn(\get_class($object));
         $this->admin->update($object)->shouldBeCalled();
+        $container->get('sonata.post.admin.template_registry')->willReturn($templateRegistry->reveal());
+        // NEXT_MAJOR: Remove this line
         $this->admin->getTemplate('base_list_field')->willReturn('admin_template');
+        $templateRegistry->getTemplate('base_list_field')->willReturn('admin_template');
+        $this->admin->getModelManager()->willReturn($modelManager->reveal());
         $this->validator->validate($object)->willReturn(new ConstraintViolationList([]));
         $this->twig->getExtension(SonataAdminExtension::class)->willReturn(
-            new SonataAdminExtension($pool->reveal(), null, $translator->reveal())
+            new SonataAdminExtension($this->pool->reveal(), null, $translator->reveal(), $container->reveal())
         );
-        $this->twig->loadTemplate('field_template')->willReturn($template->reveal());
+        $this->twig->load('field_template')->willReturn(new TemplateWrapper($this->twig->reveal(), $template->reveal()));
         $this->twig->isDebug()->willReturn(false);
-        $this->pool->getContainer()->willReturn($container->reveal());
         $this->pool->getPropertyAccessor()->willReturn($propertyAccessor);
         $fieldDescription->getType()->willReturn('choice');
         $fieldDescription->getOption('editable')->willReturn(true);
         $fieldDescription->getOption('class')->willReturn(AdminControllerHelper_Bar::class);
+        $fieldDescription->getTargetEntity()->willReturn(AdminControllerHelper_Bar::class);
         $fieldDescription->getAdmin()->willReturn($this->admin->reveal());
         $fieldDescription->getTemplate()->willReturn('field_template');
         $fieldDescription->getValue(Argument::cetera())->willReturn('some value');
-        $container->get('doctrine_orm')->willReturn($managerRegistry->reveal());
-        $managerRegistry->getManager()->willReturn($objectManager->reveal());
-        $objectManager->getClassMetadata(get_class($object))->willReturn($classMetadata->reveal());
-        $objectManager->find(get_class($associationObject), 1)->willReturn($associationObject);
-        $classMetadata->hasAssociation('bar')->willReturn(true);
+        $modelManager->find(\get_class($associationObject), 1)->willReturn($associationObject);
 
         $response = $this->controller->setObjectFieldValueAction($request);
 
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertSame(200, $response->getStatusCode());
     }
 
-    public function testAppendFormFieldElementAction()
+    public function testAppendFormFieldElementAction(): void
     {
         $object = new AdminControllerHelper_Foo();
         $request = new Request([
@@ -300,8 +302,8 @@ class HelperControllerTest extends TestCase
 
         $renderer = $this->configureFormRenderer();
 
-        $this->admin->getModelManager()->willReturn($modelManager->reveal());
-        $this->admin->getClass()->willReturn(get_class($object));
+        $this->admin->getObject(42)->willReturn($object);
+        $this->admin->getClass()->willReturn(\get_class($object));
         $this->admin->setSubject($object)->shouldBeCalled();
         $this->admin->getFormTheme()->willReturn($formView);
         $this->helper->appendFormFieldElement($this->admin->reveal(), $object, null)->willReturn([
@@ -310,7 +312,7 @@ class HelperControllerTest extends TestCase
         ]);
         $this->helper->getChildFormView($formView, null)
             ->willReturn($formView);
-        $modelManager->find(get_class($object), 42)->willReturn($object);
+        $modelManager->find(\get_class($object), 42)->willReturn($object);
         $form->createView()->willReturn($formView);
         $renderer->setTheme($formView, $formView)->shouldBeCalled();
         $renderer->searchAndRenderBlock($formView, 'widget')->willReturn('block');
@@ -321,7 +323,7 @@ class HelperControllerTest extends TestCase
         $this->assertSame($response->getContent(), 'block');
     }
 
-    public function testRetrieveFormFieldElementAction()
+    public function testRetrieveFormFieldElementAction(): void
     {
         $object = new AdminControllerHelper_Foo();
         $request = new Request([
@@ -339,14 +341,14 @@ class HelperControllerTest extends TestCase
 
         $renderer = $this->configureFormRenderer();
 
-        $this->admin->getModelManager()->willReturn($modelManager->reveal());
-        $this->admin->getClass()->willReturn(get_class($object));
+        $this->admin->getObject(42)->willReturn($object);
+        $this->admin->getClass()->willReturn(\get_class($object));
         $this->admin->setSubject($object)->shouldBeCalled();
         $this->admin->getFormTheme()->willReturn($formView);
         $this->admin->getFormBuilder()->willReturn($formBuilder->reveal());
         $this->helper->getChildFormView($formView, null)
             ->willReturn($formView);
-        $modelManager->find(get_class($object), 42)->willReturn($object);
+        $modelManager->find(\get_class($object), 42)->willReturn($object);
         $form->setData($object)->shouldBeCalled();
         $form->handleRequest($request)->shouldBeCalled();
         $form->createView()->willReturn($formView);
@@ -360,7 +362,7 @@ class HelperControllerTest extends TestCase
         $this->assertSame($response->getContent(), 'block');
     }
 
-    public function testSetObjectFieldValueActionWithViolations()
+    public function testSetObjectFieldValueActionWithViolations(): void
     {
         $bar = new AdminControllerHelper_Bar();
         $object = new AdminControllerHelper_Foo();
@@ -389,11 +391,11 @@ class HelperControllerTest extends TestCase
 
         $response = $this->controller->setObjectFieldValueAction($request);
 
-        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertSame(400, $response->getStatusCode());
         $this->assertSame(json_encode("error1\nerror2"), $response->getContent());
     }
 
-    public function testRetrieveAutocompleteItemsActionNotGranted()
+    public function testRetrieveAutocompleteItemsActionNotGranted(): void
     {
         $this->expectException(AccessDeniedException::class);
 
@@ -407,7 +409,7 @@ class HelperControllerTest extends TestCase
         $this->controller->retrieveAutocompleteItemsAction($request);
     }
 
-    public function testRetrieveAutocompleteItemsActionDisabledFormelememt()
+    public function testRetrieveAutocompleteItemsActionDisabledFormelememt(): void
     {
         $this->expectException(AccessDeniedException::class);
         $this->expectExceptionMessage('Autocomplete list can`t be retrieved because the form element is disabled or read_only.');
@@ -434,7 +436,7 @@ class HelperControllerTest extends TestCase
         $this->controller->retrieveAutocompleteItemsAction($request);
     }
 
-    public function testRetrieveAutocompleteItemsTooShortSearchString()
+    public function testRetrieveAutocompleteItemsTooShortSearchString(): void
     {
         $object = new AdminControllerHelper_Foo();
         $request = new Request([
@@ -465,22 +467,97 @@ class HelperControllerTest extends TestCase
         $this->assertSame('{"status":"KO","message":"Too short search string."}', $response->getContent());
     }
 
-    public function testRetrieveAutocompleteItems()
+    public function testRetrieveAutocompleteItems(): void
     {
-        $entity = new Foo();
         $request = new Request([
             'admin_code' => 'foo.admin',
             'field' => 'barField',
             'q' => 'sonata',
         ], [], [], [], [], ['REQUEST_METHOD' => 'GET', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
 
+        $this->configureFormConfig('barField');
+
+        $datagrid = $this->configureAutocompleteItemsDatagrid();
+        $filter = new FooFilter();
+        $filter->initialize('foo');
+
+        $datagrid->hasFilter('foo')->willReturn(true);
+        $datagrid->getFilter('foo')->willReturn($filter);
+        $datagrid->setValue('foo', null, 'sonata')->shouldBeCalled();
+
+        $response = $this->controller->retrieveAutocompleteItemsAction($request);
+
+        $this->isInstanceOf(Response::class, $response);
+        $this->assertSame('application/json', $response->headers->get('Content-Type'));
+        $this->assertSame('{"status":"OK","more":false,"items":[{"id":123,"label":"FOO"}]}', $response->getContent());
+    }
+
+    public function testRetrieveAutocompleteItemsComplexPropertyArray(): void
+    {
+        $request = new Request([
+            'admin_code' => 'foo.admin',
+            'field' => 'barField',
+            'q' => 'sonata',
+        ], [], [], [], [], ['REQUEST_METHOD' => 'GET', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+
+        $this->configureFormConfigComplexPropertyArray('barField');
+        $datagrid = $this->configureAutocompleteItemsDatagrid();
+
+        $filter = new FooFilter();
+        $filter->initialize('entity.property');
+
+        $datagrid->hasFilter('entity.property')->willReturn(true);
+        $datagrid->getFilter('entity.property')->willReturn($filter);
+        $filter2 = new FooFilter();
+        $filter2->initialize('entity2.property2');
+
+        $datagrid->hasFilter('entity2.property2')->willReturn(true);
+        $datagrid->getFilter('entity2.property2')->willReturn($filter2);
+
+        $datagrid->setValue('entity__property', null, 'sonata')->shouldBeCalled();
+        $datagrid->setValue('entity2__property2', null, 'sonata')->shouldBeCalled();
+
+        $response = $this->controller->retrieveAutocompleteItemsAction($request);
+
+        $this->isInstanceOf(Response::class, $response);
+        $this->assertSame('application/json', $response->headers->get('Content-Type'));
+        $this->assertSame('{"status":"OK","more":false,"items":[{"id":123,"label":"FOO"}]}', $response->getContent());
+    }
+
+    public function testRetrieveAutocompleteItemsComplexProperty(): void
+    {
+        $request = new Request([
+            'admin_code' => 'foo.admin',
+            'field' => 'barField',
+            'q' => 'sonata',
+        ], [], [], [], [], ['REQUEST_METHOD' => 'GET', 'HTTP_X_REQUESTED_WITH' => 'XMLHttpRequest']);
+
+        $this->configureFormConfigComplexProperty('barField');
+        $datagrid = $this->configureAutocompleteItemsDatagrid();
+
+        $filter = new FooFilter();
+        $filter->initialize('entity.property');
+
+        $datagrid->hasFilter('entity.property')->willReturn(true);
+        $datagrid->getFilter('entity.property')->willReturn($filter);
+        $datagrid->setValue('entity__property', null, 'sonata')->shouldBeCalled();
+
+        $response = $this->controller->retrieveAutocompleteItemsAction($request);
+
+        $this->isInstanceOf(Response::class, $response);
+        $this->assertSame('application/json', $response->headers->get('Content-Type'));
+        $this->assertSame('{"status":"OK","more":false,"items":[{"id":123,"label":"FOO"}]}', $response->getContent());
+    }
+
+    private function configureAutocompleteItemsDatagrid(): ObjectProphecy
+    {
+        $entity = new Foo();
+
         $targetAdmin = $this->prophesize(AbstractAdmin::class);
         $datagrid = $this->prophesize(DatagridInterface::class);
-        $metadata = $this->prophesize(Metadata::class);
+        $metadata = $this->prophesize(MetadataInterface::class);
         $pager = $this->prophesize(Pager::class);
         $fieldDescription = $this->prophesize(FieldDescriptionInterface::class);
-
-        $this->configureFormConfig('barField');
 
         $this->admin->getNewInstance()->willReturn($entity);
         $this->admin->setSubject($entity)->shouldBeCalled();
@@ -488,13 +565,12 @@ class HelperControllerTest extends TestCase
         $this->admin->getFormFieldDescription('barField')->willReturn($fieldDescription->reveal());
         $this->admin->getFormFieldDescriptions()->willReturn(null);
         $this->admin->id($entity)->willReturn(123);
-        $targetAdmin->checkAccess('list')->willReturn(null);
-        $targetAdmin->setPersistFilters(false)->willReturn(null);
+        $targetAdmin->checkAccess('list')->shouldBeCalled();
+        $targetAdmin->setFilterPersister(null)->shouldBeCalled();
         $targetAdmin->getDatagrid()->willReturn($datagrid->reveal());
         $targetAdmin->getObjectMetadata($entity)->willReturn($metadata->reveal());
         $metadata->getTitle()->willReturn('FOO');
-        $datagrid->hasFilter('foo')->willReturn(true);
-        $datagrid->setValue('foo', null, 'sonata')->shouldBeCalled();
+
         $datagrid->setValue('_per_page', null, 10)->shouldBeCalled();
         $datagrid->setValue('_page', null, 1)->shouldBeCalled();
         $datagrid->buildPager()->willReturn(null);
@@ -505,14 +581,10 @@ class HelperControllerTest extends TestCase
         $fieldDescription->getName()->willReturn('barField');
         $fieldDescription->getAssociationAdmin()->willReturn($targetAdmin->reveal());
 
-        $response = $this->controller->retrieveAutocompleteItemsAction($request);
-
-        $this->isInstanceOf(Response::class, $response);
-        $this->assertSame('application/json', $response->headers->get('Content-Type'));
-        $this->assertSame('{"status":"OK","more":false,"items":[{"id":123,"label":"FOO"}]}', $response->getContent());
+        return $datagrid;
     }
 
-    private function configureFormConfig($field, $disabled = false)
+    private function configureFormConfig(string $field, bool $disabled = false): void
     {
         $form = $this->prophesize(Form::class);
         $formType = $this->prophesize(Form::class);
@@ -523,6 +595,44 @@ class HelperControllerTest extends TestCase
         $formType->getConfig()->willReturn($formConfig->reveal());
         $formConfig->getAttribute('disabled')->willReturn($disabled);
         $formConfig->getAttribute('property')->willReturn('foo');
+        $formConfig->getAttribute('callback')->willReturn(null);
+        $formConfig->getAttribute('minimum_input_length')->willReturn(3);
+        $formConfig->getAttribute('items_per_page')->willReturn(10);
+        $formConfig->getAttribute('req_param_name_page_number')->willReturn('_page');
+        $formConfig->getAttribute('to_string_callback')->willReturn(null);
+        $formConfig->getAttribute('target_admin_access_action')->willReturn('list');
+    }
+
+    private function configureFormConfigComplexProperty(string $field): void
+    {
+        $form = $this->prophesize(Form::class);
+        $formType = $this->prophesize(Form::class);
+        $formConfig = $this->prophesize(FormConfigInterface::class);
+
+        $this->admin->getForm()->willReturn($form->reveal());
+        $form->get($field)->willReturn($formType->reveal());
+        $formType->getConfig()->willReturn($formConfig->reveal());
+        $formConfig->getAttribute('disabled')->willReturn(false);
+        $formConfig->getAttribute('property')->willReturn('entity.property');
+        $formConfig->getAttribute('callback')->willReturn(null);
+        $formConfig->getAttribute('minimum_input_length')->willReturn(3);
+        $formConfig->getAttribute('items_per_page')->willReturn(10);
+        $formConfig->getAttribute('req_param_name_page_number')->willReturn('_page');
+        $formConfig->getAttribute('to_string_callback')->willReturn(null);
+        $formConfig->getAttribute('target_admin_access_action')->willReturn('list');
+    }
+
+    private function configureFormConfigComplexPropertyArray(string $field): void
+    {
+        $form = $this->prophesize(Form::class);
+        $formType = $this->prophesize(Form::class);
+        $formConfig = $this->prophesize(FormConfigInterface::class);
+
+        $this->admin->getForm()->willReturn($form->reveal());
+        $form->get($field)->willReturn($formType->reveal());
+        $formType->getConfig()->willReturn($formConfig->reveal());
+        $formConfig->getAttribute('disabled')->willReturn(false);
+        $formConfig->getAttribute('property')->willReturn(['entity.property', 'entity2.property2']);
         $formConfig->getAttribute('callback')->willReturn(null);
         $formConfig->getAttribute('minimum_input_length')->willReturn(3);
         $formConfig->getAttribute('items_per_page')->willReturn(10);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Sonata Project package.
  *
@@ -87,7 +89,7 @@ class AdminVoter implements VoterInterface
         }
 
         $route = $item->getExtra('route');
-        if ($route && $request && $route == $request->get('_route')) {
+        if ($route && $request && $route === $request->get('_route')) {
             return true;
         }
 

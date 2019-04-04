@@ -18,7 +18,7 @@ file that was distributed with this source code.
 {%- block tab_menu -%}
     {{ knp_menu_render(admin.sidemenu(action), {
         'currentClass': 'active',
-        'template': get_admin_pool_template('tab_menu_template')
+        'template': get_global_template('tab_menu_template')
     }, 'twig') }}
 {%- endblock -%}
 
@@ -53,7 +53,7 @@ file that was distributed with this source code.
                 {% block list_header %}{% endblock %}
 
                 {% if admin.datagrid.results|length > 0 %}
-                    <table class="table table-bordered table-striped sonata-ba-list">
+                    <table class="table table-bordered table-striped table-hover sonata-ba-list">
                         {% block table_header %}
                             <thead>
                                 <tr class="sonata-ba-list-field-header">
@@ -80,7 +80,7 @@ file that was distributed with this source code.
 
                                             {% spaceless %}
                                                 <th class="sonata-ba-list-field-header-{{ field_description.type}} {% if sortable %} sonata-ba-list-field-header-order-{{ sort_by|lower }} {{ sort_active_class }}{% endif %}{% if field_description.options.header_class is defined %} {{ field_description.options.header_class }}{% endif %}"{% if field_description.options.header_style is defined %} style="{{ field_description.options.header_style }}"{% endif %}>
-                                                    {% if sortable %}<a href="{{ admin.generateUrl('list', sort_parameters) }}">{% endif %}
+                                                    {% if sortable %}<a href="{{ admin.generateUrl('list', sort_parameters|merge({_list_mode: admin.getListMode()})) }}">{% endif %}
                                                     {% if field_description.getOption('label_icon') %}
                                                         <i class="sonata-ba-list-field-header-label-icon {{ field_description.getOption('label_icon') }}" aria-hidden="true"></i>
                                                     {% endif %}
@@ -115,7 +115,7 @@ file that was distributed with this source code.
                                 <span class="progress-description">
                                     {% if not app.request.xmlHttpRequest %}
                                     <ul class="list-unstyled">
-                                        {% include '@SonataAdmin/Button/create_button.html.twig' %}
+                                        {% include get_admin_template('button_create', admin.code) %}
                                     </ul>
                                     {% endif %}
                                 </span>
@@ -143,7 +143,8 @@ file that was distributed with this source code.
                                                                 .closest('table')
                                                                 .find('td.sonata-ba-list-field-batch input[type="checkbox"], div.sonata-ba-list-field-batch input[type="checkbox"]')
                                                             ;
-                                                            if (window.SONATA_CONFIG.USE_ICHECK) {
+
+                                                            if (Admin.get_config('USE_ICHECK')) {
                                                                 checkboxes.iCheck($(this).is(':checked') ? 'check' : 'uncheck');
                                                             } else {
                                                                 checkboxes.prop('checked', this.checked);
@@ -202,7 +203,7 @@ file that was distributed with this source code.
                                                         <i class="fa fa-arrow-circle-o-down" aria-hidden="true"></i>
                                                         {{ ("export_format_" ~ format)|trans({}, 'SonataAdminBundle') }}
                                                     </a>
-                                                <li>
+                                                </li>
                                                 {% endfor %}
                                             </ul>
                                         </div>
